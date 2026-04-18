@@ -11,6 +11,7 @@ if (!token) {
 
 const bot = new Telegraf(token);
 const customSessions = new Map();
+const START_MENU_TEXT = "👋 Welcome!\n\nChoose an option below:";
 
 function pickRandomChar(charset) {
   return charset[crypto.randomInt(0, charset.length)];
@@ -77,6 +78,15 @@ async function sendPasswordBatch(ctx, length, count = 10) {
     const password = generatePassword(length);
     await sendPasswordWithRegen(ctx, password, length);
   }
+}
+
+async function sendPinWithRegen(ctx, pin, length) {
+  await ctx.reply("<code>" + pin + "</code>", {
+    parse_mode: "HTML",
+    reply_markup: {
+      inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: "regen_pin_" + length }]]
+    }
+  });
 }
 
 function generatePin(length) {
@@ -188,51 +198,56 @@ function generateUsername() {
   return username;
 }
 
+function buildStartMenuKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("🔐 Generate Password", "menu_gen")],
+    [Markup.button.callback("🔢 Generate PIN", "menu_pin")],
+    [Markup.button.callback("📶 WiFi Password", "menu_wifi")],
+    [Markup.button.callback("👤 Username", "menu_username")],
+    [Markup.button.callback("⚙️ Settings", "menu_settings")]
+  ]);
+}
+
+function buildGenLengthKeyboard() {
+  return Markup.inlineKeyboard([
+    [
+      Markup.button.callback("8", "gen_8"),
+      Markup.button.callback("12", "gen_12"),
+      Markup.button.callback("16", "gen_16"),
+      Markup.button.callback("20", "gen_20")
+    ]
+  ]);
+}
+
+function buildPinLengthKeyboard() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("4 digits", "pin_4")],
+    [Markup.button.callback("5 digits", "pin_5")],
+    [Markup.button.callback("6 digits", "pin_6")]
+  ]);
+}
+
+async function sendWifiPassword(ctx) {
+  const length = randomIntInclusive(12, 16);
+  const wifiPassword = generatePassword(length);
+  await sendPasswordWithRegen(ctx, wifiPassword, length);
+}
+
+async function sendUsername(ctx) {
+  const username = generateUsername();
+  await ctx.reply("<code>" + escapeHtml(username) + "</code>", { parse_mode: "HTML" });
+}
+
 bot.start((ctx) => {
-  ctx.reply(
-    "👋 Welcome to Password Generator Bot!\n\n" +
-      "🔐 Generate secure and readable passwords instantly.\n\n" +
-      "📌 Available commands:\n\n" +
-      "/gen10 - 10 passwords (16 chars)\n" +
-      "/gen12 - 10 passwords (12 chars)\n" +
-      "/pin - Generate PIN with length selection\n" +
-      "/wifi - Generate WiFi password\n" +
-      "/username - Generate random username\n\n" +
-      "⚡ Tap a command or type it to get started."
-  );
-});
-
-bot.command("gen10", async (ctx) => {
-  await sendPasswordBatch(ctx, 16, 10);
-});
-
-bot.command("gen12", async (ctx) => {
-  await sendPasswordBatch(ctx, 12, 10);
+  ctx.reply(START_MENU_TEXT, buildStartMenuKeyboard());
 });
 
 bot.command("gen", (ctx) => {
-  ctx.reply(
-    "🔢 Select password length:",
-    Markup.inlineKeyboard([
-      [
-        Markup.button.callback("8", "gen_8"),
-        Markup.button.callback("12", "gen_12"),
-        Markup.button.callback("16", "gen_16"),
-        Markup.button.callback("20", "gen_20")
-      ]
-    ])
-  );
+  ctx.reply("🔢 Select password length:", buildGenLengthKeyboard());
 });
 
 bot.command("pin", (ctx) => {
-  ctx.reply(
-    "Select PIN length:",
-    Markup.inlineKeyboard([
-      [Markup.button.callback("4 digits", "pin_4")],
-      [Markup.button.callback("5 digits", "pin_5")],
-      [Markup.button.callback("6 digits", "pin_6")]
-    ])
-  );
+  ctx.reply("Select PIN length:", buildPinLengthKeyboard());
 });
 
 bot.command("custom", (ctx) => {
@@ -250,14 +265,11 @@ bot.command("custom", (ctx) => {
 });
 
 bot.command("wifi", async (ctx) => {
-  const length = randomIntInclusive(12, 16);
-  const wifiPassword = generatePassword(length);
-  await sendPasswordWithRegen(ctx, wifiPassword, length);
+  await sendWifiPassword(ctx);
 });
 
-bot.command("username", (ctx) => {
-  const username = generateUsername();
-  ctx.reply("<code>" + escapeHtml(username) + "</code>", { parse_mode: "HTML" });
+bot.command("username", async (ctx) => {
+  await sendUsername(ctx);
 });
 
 bot.on("callback_query", async (ctx) => {
@@ -270,10 +282,40 @@ bot.on("callback_query", async (ctx) => {
   };
   const selectedPinLength = pinLengths[data];
 
+  if (data === "menu_gen") {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText("🔢 Select password length:", buildGenLengthKeyboard());
+    return;
+  }
+
+  if (data === "menu_pin") {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText("Select PIN length:", buildPinLengthKeyboard());
+    return;
+  }
+
+  if (data === "menu_wifi") {
+    await ctx.answerCbQuery();
+    await sendWifiPassword(ctx);
+    return;
+  }
+
+  if (data === "menu_username") {
+    await ctx.answerCbQuery();
+    await sendUsername(ctx);
+    return;
+  }
+
+  if (data === "menu_settings") {
+    await ctx.answerCbQuery();
+    await ctx.editMessageText("⚙️ Settings coming soon");
+    return;
+  }
+
   if (selectedPinLength) {
     const pin = generatePin(selectedPinLength);
     await ctx.answerCbQuery();
-    await ctx.reply("<code>" + escapeHtml(pin) + "</code>", { parse_mode: "HTML" });
+    await sendPinWithRegen(ctx, pin, selectedPinLength);
 
     try {
       await ctx.deleteMessage();
@@ -281,6 +323,24 @@ bot.on("callback_query", async (ctx) => {
       // Ignore delete failures (e.g., old message or insufficient permissions).
     }
 
+    return;
+  }
+
+  if (typeof data === "string" && data.startsWith("regen_pin_")) {
+    const selectedLength = Number.parseInt(data.split("_")[2], 10);
+    if (![4, 5, 6].includes(selectedLength)) {
+      await ctx.answerCbQuery();
+      return;
+    }
+
+    const pin = generatePin(selectedLength);
+    await ctx.answerCbQuery();
+    await ctx.editMessageText("<code>" + pin + "</code>", {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: data }]]
+      }
+    });
     return;
   }
 
@@ -313,7 +373,12 @@ bot.on("callback_query", async (ctx) => {
 
     const password = generatePassword(selectedLength);
     await ctx.answerCbQuery();
-    await sendPasswordWithRegen(ctx, password, selectedLength);
+    await ctx.editMessageText("<code>" + password + "</code>", {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: data }]]
+      }
+    });
 
     return;
   }
