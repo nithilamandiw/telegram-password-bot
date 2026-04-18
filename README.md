@@ -31,10 +31,6 @@ A powerful and user-friendly Telegram bot to generate secure passwords, PINs, us
 - Random clean usernames
 - Suitable for gaming, social media, etc.
 
-### ⚙️ Settings System
-- Set default password length
-- Basic customization options (expandable)
-
 ### 🏠 Button-Based UI
 - Fully interactive menu
 - No need to type commands
@@ -119,15 +115,6 @@ You can deploy on:
 ## 🧑‍💻 Author
 
 Nithila Mandiw
-
----
-
-## ⭐ Future Improvements
-
-- Multi-language support
-- Advanced settings system
-- Inline mode support
-- Export passwords as file
 
 ---
 
