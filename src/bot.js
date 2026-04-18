@@ -1,6 +1,6 @@
 require("dotenv").config();
 const crypto = require("node:crypto");
-const { Telegraf } = require("telegraf");
+const { Telegraf, Markup } = require("telegraf");
 
 const token = process.env.BOT_TOKEN;
 
@@ -58,12 +58,12 @@ function escapeHtml(text) {
     .replaceAll(">", "&gt;");
 }
 
-function generatePin() {
+function generatePin(length) {
   const digits = "0123456789";
-  const length = randomIntInclusive(4, 6);
+  const safeLength = [4, 5, 6].includes(length) ? length : 4;
   let pin = "";
 
-  for (let i = 0; i < length; i += 1) {
+  for (let i = 0; i < safeLength; i += 1) {
     pin += pickRandomChar(digits);
   }
 
@@ -133,8 +133,14 @@ bot.command("gen12", async (ctx) => {
 });
 
 bot.command("pin", (ctx) => {
-  const pin = generatePin();
-  ctx.reply("<code>" + escapeHtml(pin) + "</code>", { parse_mode: "HTML" });
+  ctx.reply(
+    "Select PIN length:",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("4 digits", "pin_4")],
+      [Markup.button.callback("5 digits", "pin_5")],
+      [Markup.button.callback("6 digits", "pin_6")]
+    ])
+  );
 });
 
 bot.command("wifi", (ctx) => {
@@ -145,6 +151,31 @@ bot.command("wifi", (ctx) => {
 bot.command("username", (ctx) => {
   const username = generateUsername();
   ctx.reply("<code>" + escapeHtml(username) + "</code>", { parse_mode: "HTML" });
+});
+
+bot.on("callback_query", async (ctx) => {
+  const data = ctx.callbackQuery?.data;
+  const pinLengths = {
+    pin_4: 4,
+    pin_5: 5,
+    pin_6: 6
+  };
+  const selectedLength = pinLengths[data];
+
+  if (!selectedLength) {
+    await ctx.answerCbQuery();
+    return;
+  }
+
+  const pin = generatePin(selectedLength);
+  await ctx.answerCbQuery();
+  await ctx.reply("<code>" + escapeHtml(pin) + "</code>", { parse_mode: "HTML" });
+
+  try {
+    await ctx.deleteMessage();
+  } catch (_error) {
+    // Ignore delete failures (e.g., old message or insufficient permissions).
+  }
 });
 
 bot.launch();
