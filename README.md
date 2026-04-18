@@ -1,63 +1,75 @@
-# Telegram Password Generator Bot
+# 🔐 Telegram Password Generator Bot
 
-A simple Telegram bot that generates strong passwords.
+A simple and secure Telegram bot that generates strong, readable passwords instantly.
 
-## Features
+---
 
-- `/start` greeting message
-- `/help` command usage
-- `/ping` health check
-- `/password [length] [symbols]` password generation
-- `/password10` generate 10 strong passwords (16 chars each)
+## 🚀 Features
 
-## Prerequisites
+- Generate 10 secure passwords at once
+- Each password:
+  - Includes uppercase, lowercase, numbers, and symbols
+  - Excludes confusing characters (0, O, o, l, I)
+  - Uses safe special characters only
+- Passwords are sent in monospace format for easy copy
+- Clean and minimal commands
 
-- Node.js 18+ (or newer)
-- A Telegram bot token from BotFather
+---
 
-## Setup
+## 🤖 Commands
 
-1. Install dependencies:
-   ```bash
+- /start  
+  Start the bot and view instructions
+
+- /gen10  
+  Generate 10 strong passwords (16 characters each)
+
+- /gen12  
+  Generate 10 strong passwords (12 characters each)
+
+---
+
+## 🔒 Password Rules
+
+- Uppercase: A-Z (excluding O, I)
+- Lowercase: a-z (excluding o, l)
+- Numbers: 1-9 (excluding 0)
+- Symbols: ! @ # $ % ^ & * _ - + = ? /
+
+---
+
+## 📦 Installation
+
+1. Clone the repository
+2. Install dependencies:
    npm install
-   ```
-2. Create environment file:
-   ```bash
-   cp .env.example .env
-   ```
-3. Set your bot token in `.env`:
-   ```env
-   BOT_TOKEN=your-real-token
-   ```
 
-## Run
+3. Create a .env file and add your bot token:
+   BOT_TOKEN=your_telegram_bot_token
 
-```bash
-npm start
-```
+4. Run the bot:
+   node src/bot.js
 
-For development with file watching:
+---
 
-```bash
-npm run dev
-```
+## 🌐 Deployment
 
-For debug mode:
+You can deploy this bot on:
+- VPS (recommended for 24/7)
+- Docker
+- Cloud platforms
 
-```bash
-npm run debug
-```
+---
 
-## Command Examples
+## ⚠️ Security
 
-- `/password`
-- `/password 24`
-- `/password 20 symbols`
-- `/password10`
+- Do NOT share your .env file
+- Keep your bot token private
 
-## Notes
+---
 
-- Password length is clamped between 8 and 64.
-- By default, passwords include uppercase, lowercase, and digits.
-- Add `symbols` to include special characters.
-- `/password10` always returns 10 passwords, each 16 characters, each containing uppercase, lowercase, numbers, and symbols.
+## 🧑‍💻 Author
+
+Nithila Mandiw
+
+---
