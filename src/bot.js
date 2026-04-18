@@ -114,7 +114,7 @@ function generateUsername() {
   return username;
 }
 
-bot.command("start", (ctx) => {
+bot.start((ctx) => {
   ctx.reply("Welcome! Use /gen10 to generate 10 strong passwords.");
 });
 
