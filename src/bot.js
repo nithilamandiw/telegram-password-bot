@@ -115,7 +115,17 @@ function generateUsername() {
 }
 
 bot.start((ctx) => {
-  ctx.reply("Welcome! Use /gen10 to generate 10 strong passwords.");
+  ctx.reply(
+    "👋 Welcome to Password Generator Bot!\n\n" +
+      "🔐 Generate secure and readable passwords instantly.\n\n" +
+      "📌 Available commands:\n\n" +
+      "/gen10 - 10 passwords (16 chars)\n" +
+      "/gen12 - 10 passwords (12 chars)\n" +
+      "/pin - Generate PIN with length selection\n" +
+      "/wifi - Generate WiFi password\n" +
+      "/username - Generate random username\n\n" +
+      "⚡ Tap a command or type it to get started."
+  );
 });
 
 bot.command("gen10", async (ctx) => {
