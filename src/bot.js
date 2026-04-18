@@ -59,6 +59,26 @@ function escapeHtml(text) {
     .replaceAll(">", "&gt;");
 }
 
+function buildRegenReplyOptions(length) {
+  return {
+    reply_markup: {
+      inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: "regen_" + length }]]
+    },
+    parse_mode: "HTML"
+  };
+}
+
+async function sendPasswordWithRegen(ctx, password, length) {
+  await ctx.reply("<code>" + escapeHtml(password) + "</code>", buildRegenReplyOptions(length));
+}
+
+async function sendPasswordBatch(ctx, length, count = 10) {
+  for (let i = 0; i < count; i += 1) {
+    const password = generatePassword(length);
+    await sendPasswordWithRegen(ctx, password, length);
+  }
+}
+
 function generatePin(length) {
   const digits = "0123456789";
   const safeLength = [4, 5, 6].includes(length) ? length : 4;
@@ -69,11 +89,6 @@ function generatePin(length) {
   }
 
   return pin;
-}
-
-function generateWifiPassword() {
-  const length = randomIntInclusive(12, 16);
-  return generatePassword(length);
 }
 
 function getDefaultCustomState(length) {
@@ -188,17 +203,25 @@ bot.start((ctx) => {
 });
 
 bot.command("gen10", async (ctx) => {
-  for (let i = 1; i <= 10; i += 1) {
-    const password = generatePassword(16);
-    await ctx.reply("<code>" + password + "</code>", { parse_mode: "HTML" });
-  }
+  await sendPasswordBatch(ctx, 16, 10);
 });
 
 bot.command("gen12", async (ctx) => {
-  for (let i = 1; i <= 10; i += 1) {
-    const password = generatePassword(12);
-    await ctx.reply("<code>" + password + "</code>", { parse_mode: "HTML" });
-  }
+  await sendPasswordBatch(ctx, 12, 10);
+});
+
+bot.command("gen", (ctx) => {
+  ctx.reply(
+    "🔢 Select password length:",
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback("8", "gen_8"),
+        Markup.button.callback("12", "gen_12"),
+        Markup.button.callback("16", "gen_16"),
+        Markup.button.callback("20", "gen_20")
+      ]
+    ])
+  );
 });
 
 bot.command("pin", (ctx) => {
@@ -226,9 +249,10 @@ bot.command("custom", (ctx) => {
   );
 });
 
-bot.command("wifi", (ctx) => {
-  const wifiPassword = generateWifiPassword();
-  ctx.reply("<code>" + escapeHtml(wifiPassword) + "</code>", { parse_mode: "HTML" });
+bot.command("wifi", async (ctx) => {
+  const length = randomIntInclusive(12, 16);
+  const wifiPassword = generatePassword(length);
+  await sendPasswordWithRegen(ctx, wifiPassword, length);
 });
 
 bot.command("username", (ctx) => {
@@ -256,6 +280,40 @@ bot.on("callback_query", async (ctx) => {
     } catch (_error) {
       // Ignore delete failures (e.g., old message or insufficient permissions).
     }
+
+    return;
+  }
+
+  if (typeof data === "string" && data.startsWith("gen_")) {
+    const selectedLength = Number.parseInt(data.split("_")[1], 10);
+    if (![8, 12, 16, 20].includes(selectedLength)) {
+      await ctx.answerCbQuery();
+      return;
+    }
+
+    await ctx.answerCbQuery();
+
+    try {
+      await ctx.deleteMessage();
+    } catch (_error) {
+      // Ignore delete failures (e.g., old message or insufficient permissions).
+    }
+
+    await sendPasswordBatch(ctx, selectedLength, 10);
+
+    return;
+  }
+
+  if (typeof data === "string" && data.startsWith("regen_")) {
+    const selectedLength = Number.parseInt(data.split("_")[1], 10);
+    if (!Number.isFinite(selectedLength) || selectedLength < 4 || selectedLength > 64) {
+      await ctx.answerCbQuery();
+      return;
+    }
+
+    const password = generatePassword(selectedLength);
+    await ctx.answerCbQuery();
+    await sendPasswordWithRegen(ctx, password, selectedLength);
 
     return;
   }
