@@ -11,39 +11,6 @@ if (!token) {
 
 const bot = new Telegraf(token);
 
-function parsePasswordArgs(text) {
-  const parts = text.trim().split(/\s+/);
-  const lengthArg = Number.parseInt(parts[1], 10);
-  const wantsSymbols = (parts[2] || "").toLowerCase() === "symbols";
-
-  const length = Number.isFinite(lengthArg) ? lengthArg : 16;
-  return { length, wantsSymbols };
-}
-
-function generatePassword(length, includeSymbols) {
-  const lowercase = "abcdefghijklmnopqrstuvwxyz";
-  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const digits = "0123456789";
-  const symbols = "!@#$%^&*()-_=+[]{};:,.?/";
-
-  const minLength = 8;
-  const maxLength = 64;
-  const safeLength = Math.max(minLength, Math.min(maxLength, length));
-
-  let charset = lowercase + uppercase + digits;
-  if (includeSymbols) {
-    charset += symbols;
-  }
-
-  let password = "";
-  for (let i = 0; i < safeLength; i += 1) {
-    const index = crypto.randomInt(0, charset.length);
-    password += charset[index];
-  }
-
-  return { password, safeLength };
-}
-
 function pickRandomChar(charset) {
   return charset[crypto.randomInt(0, charset.length)];
 }
@@ -53,74 +20,49 @@ function shuffle(chars) {
     const j = crypto.randomInt(0, i + 1);
     [chars[i], chars[j]] = [chars[j], chars[i]];
   }
+
   return chars;
 }
 
-function generateStrongPassword16() {
-  const lowercase = "abcdefghijklmnopqrstuvwxyz";
-  const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const digits = "0123456789";
-  const symbols = "!@#$%^&*()-_=+[]{};:,.?/";
-  const all = lowercase + uppercase + digits + symbols;
+function generatePassword(length = 16) {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnpqrstuvwxyz";
+  const numbers = "123456789";
+  const special = "!@#$%^&*_-+=?/";
+  const all = uppercase + lowercase + numbers + special;
+
+  const safeLength = Math.max(4, Number.isFinite(length) ? Math.floor(length) : 16);
 
   const chars = [
-    pickRandomChar(lowercase),
     pickRandomChar(uppercase),
-    pickRandomChar(digits),
-    pickRandomChar(symbols)
+    pickRandomChar(lowercase),
+    pickRandomChar(numbers),
+    pickRandomChar(special)
   ];
 
-  while (chars.length < 16) {
+  while (chars.length < safeLength) {
     chars.push(pickRandomChar(all));
   }
 
   return shuffle(chars).join("");
 }
 
-bot.start((ctx) => {
-  ctx.reply(
-    "Welcome to Password Generator Bot.\n" +
-      "Use /password to generate a secure password.\n" +
-      "Example: /password 20 symbols\n" +
-      "Use /password10 to generate 10 strong passwords."
-  );
+bot.command("start", (ctx) => {
+  ctx.reply("Welcome! Use /gen10 to generate 10 strong passwords.");
 });
 
-bot.help((ctx) => {
-  ctx.reply(
-    "Commands:\n" +
-      "/password [length] [symbols] - Generate password (length 8-64).\n" +
-      "/password10 - Generate 10 strong passwords (16 chars, upper/lower/number/symbol).\n" +
-      "/ping - Check if bot is online."
-  );
+bot.command("gen10", async (ctx) => {
+  for (let i = 1; i <= 10; i += 1) {
+    const password = generatePassword(16);
+    await ctx.reply("<code>" + password + "</code>", { parse_mode: "HTML" });
+  }
 });
 
-bot.command("ping", (ctx) => {
-  ctx.reply("pong");
-});
-
-bot.command("password", (ctx) => {
-  const { length, wantsSymbols } = parsePasswordArgs(ctx.message.text || "");
-  const { password, safeLength } = generatePassword(length, wantsSymbols);
-
-  const withSymbols = wantsSymbols ? "Yes" : "No";
-  ctx.reply(
-    "Generated password:\n" +
-      `${password}\n\n` +
-      `Length: ${safeLength}\n` +
-      `Symbols: ${withSymbols}`
-  );
-});
-
-bot.command("password10", (ctx) => {
-  const passwords = Array.from({ length: 10 }, () => generateStrongPassword16());
-  const lines = passwords.map((value, index) => `${index + 1}. ${value}`).join("\n");
-
-  ctx.reply(
-    "10 strong passwords (16 chars each):\n" +
-      `${lines}\n\n` +
-      "Each password includes uppercase, lowercase, numbers, and symbols."
-  );
+bot.command("gen12", async (ctx) => {
+  for (let i = 1; i <= 10; i += 1) {
+    const password = generatePassword(12);
+    await ctx.reply("<code>" + password + "</code>", { parse_mode: "HTML" });
+  }
 });
 
 bot.launch();
