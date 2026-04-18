@@ -10,6 +10,7 @@ if (!token) {
 }
 
 const bot = new Telegraf(token);
+const customSessions = new Map();
 
 function pickRandomChar(charset) {
   return charset[crypto.randomInt(0, charset.length)];
@@ -73,6 +74,64 @@ function generatePin(length) {
 function generateWifiPassword() {
   const length = randomIntInclusive(12, 16);
   return generatePassword(length);
+}
+
+function getDefaultCustomState(length) {
+  return {
+    length,
+    upper: true,
+    lower: true,
+    numbers: true,
+    symbols: true
+  };
+}
+
+function buildCustomOptionsKeyboard(state) {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback("Uppercase " + (state.upper ? "✅" : "❌"), "opt_upper")],
+    [Markup.button.callback("Lowercase " + (state.lower ? "✅" : "❌"), "opt_lower")],
+    [Markup.button.callback("Numbers " + (state.numbers ? "✅" : "❌"), "opt_numbers")],
+    [Markup.button.callback("Symbols " + (state.symbols ? "✅" : "❌"), "opt_symbols")],
+    [
+      Markup.button.callback("Generate 🚀", "generate_custom"),
+      Markup.button.callback("🔄 Generate Again", "regen_custom")
+    ]
+  ]);
+}
+
+function generateCustomPassword(length, state) {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnpqrstuvwxyz";
+  const numbers = "123456789";
+  const symbols = "!@#$%^&*_-+=?/";
+  const selectedSets = [];
+
+  if (state.upper) {
+    selectedSets.push(uppercase);
+  }
+  if (state.lower) {
+    selectedSets.push(lowercase);
+  }
+  if (state.numbers) {
+    selectedSets.push(numbers);
+  }
+  if (state.symbols) {
+    selectedSets.push(symbols);
+  }
+
+  if (selectedSets.length === 0) {
+    return "";
+  }
+
+  const safeLength = Math.max(selectedSets.length, Number.isFinite(length) ? Math.floor(length) : 8);
+  const all = selectedSets.join("");
+  const chars = selectedSets.map((charset) => pickRandomChar(charset));
+
+  while (chars.length < safeLength) {
+    chars.push(pickRandomChar(all));
+  }
+
+  return shuffle(chars).join("");
 }
 
 function generateUsername() {
@@ -153,6 +212,20 @@ bot.command("pin", (ctx) => {
   );
 });
 
+bot.command("custom", (ctx) => {
+  ctx.reply(
+    "🔧 Customize your password:\n\nSelect password length:",
+    Markup.inlineKeyboard([
+      [
+        Markup.button.callback("8", "len_8"),
+        Markup.button.callback("12", "len_12"),
+        Markup.button.callback("16", "len_16"),
+        Markup.button.callback("20", "len_20")
+      ]
+    ])
+  );
+});
+
 bot.command("wifi", (ctx) => {
   const wifiPassword = generateWifiPassword();
   ctx.reply("<code>" + escapeHtml(wifiPassword) + "</code>", { parse_mode: "HTML" });
@@ -165,27 +238,86 @@ bot.command("username", (ctx) => {
 
 bot.on("callback_query", async (ctx) => {
   const data = ctx.callbackQuery?.data;
+  const userId = ctx.from?.id;
   const pinLengths = {
     pin_4: 4,
     pin_5: 5,
     pin_6: 6
   };
-  const selectedLength = pinLengths[data];
+  const selectedPinLength = pinLengths[data];
 
-  if (!selectedLength) {
+  if (selectedPinLength) {
+    const pin = generatePin(selectedPinLength);
+    await ctx.answerCbQuery();
+    await ctx.reply("<code>" + escapeHtml(pin) + "</code>", { parse_mode: "HTML" });
+
+    try {
+      await ctx.deleteMessage();
+    } catch (_error) {
+      // Ignore delete failures (e.g., old message or insufficient permissions).
+    }
+
+    return;
+  }
+
+  if (typeof data === "string" && data.startsWith("len_")) {
+    const selectedLength = Number.parseInt(data.split("_")[1], 10);
+    if (![8, 12, 16, 20].includes(selectedLength) || !userId) {
+      await ctx.answerCbQuery();
+      return;
+    }
+
+    const state = getDefaultCustomState(selectedLength);
+    customSessions.set(userId, state);
+    await ctx.editMessageText("Select options:", buildCustomOptionsKeyboard(state));
     await ctx.answerCbQuery();
     return;
   }
 
-  const pin = generatePin(selectedLength);
-  await ctx.answerCbQuery();
-  await ctx.reply("<code>" + escapeHtml(pin) + "</code>", { parse_mode: "HTML" });
+  if (["opt_upper", "opt_lower", "opt_numbers", "opt_symbols"].includes(data)) {
+    if (!userId || !customSessions.has(userId)) {
+      await ctx.answerCbQuery("Use /custom first.");
+      return;
+    }
 
-  try {
-    await ctx.deleteMessage();
-  } catch (_error) {
-    // Ignore delete failures (e.g., old message or insufficient permissions).
+    const state = customSessions.get(userId);
+    const keyMap = {
+      opt_upper: "upper",
+      opt_lower: "lower",
+      opt_numbers: "numbers",
+      opt_symbols: "symbols"
+    };
+    const key = keyMap[data];
+    const nextValue = !state[key];
+    const enabledCount =
+      Number(state.upper) + Number(state.lower) + Number(state.numbers) + Number(state.symbols);
+
+    if (!nextValue && enabledCount === 1) {
+      await ctx.answerCbQuery("Select at least one option.");
+      return;
+    }
+
+    state[key] = nextValue;
+    customSessions.set(userId, state);
+    await ctx.editMessageText("Select options:", buildCustomOptionsKeyboard(state));
+    await ctx.answerCbQuery();
+    return;
   }
+
+  if (data === "generate_custom" || data === "regen_custom") {
+    if (!userId || !customSessions.has(userId)) {
+      await ctx.answerCbQuery("Use /custom first.");
+      return;
+    }
+
+    const state = customSessions.get(userId);
+    const password = generateCustomPassword(state.length, state);
+    await ctx.answerCbQuery();
+    await ctx.reply("<code>" + escapeHtml(password) + "</code>", { parse_mode: "HTML" });
+    return;
+  }
+
+  await ctx.answerCbQuery();
 });
 
 bot.launch();
