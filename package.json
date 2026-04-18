@@ -1,0 +1,23 @@
+{
+  "name": "telegram-password-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot that generates secure passwords",
+  "main": "src/bot.js",
+  "scripts": {
+    "start": "node src/bot.js",
+    "dev": "node --watch src/bot.js",
+    "debug": "node --inspect src/bot.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "password",
+    "telegraf"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "telegraf": "^4.16.3"
+  }
+}
