@@ -73,7 +73,7 @@ async function sendPasswordWithRegen(ctx, password, length) {
   await ctx.reply("<code>" + escapeHtml(password) + "</code>", buildRegenReplyOptions(length));
 }
 
-async function sendPasswordBatch(ctx, length, count = 10) {
+async function sendPasswordBatch(ctx, length, count = 5) {
   for (let i = 0; i < count; i += 1) {
     const password = generatePassword(length);
     await sendPasswordWithRegen(ctx, password, length);
