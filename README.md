@@ -2,7 +2,7 @@
 
 A powerful and user-friendly Telegram bot to generate secure passwords, PINs, usernames, and more — with a modern button-based UI.
 
-**Live Demo:** [https://t.me/gajamanrtr_bot](https://t.me/gajamanrtr_bot)
+**Live Demo:** [Click Here](https://t.me/gajamanrtr_bot)
 
 ---
 
