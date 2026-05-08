@@ -359,7 +359,7 @@ bot.on("callback_query", async (ctx) => {
       // Ignore delete failures (e.g., old message or insufficient permissions).
     }
 
-    await sendPasswordBatch(ctx, selectedLength, 10);
+    await sendPasswordBatch(ctx, selectedLength, 5);
 
     return;
   }
