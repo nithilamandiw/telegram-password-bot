@@ -345,7 +345,6 @@ bot.on("callback_query", async (ctx) => {
     try {
       await ctx.deleteMessage();
     } catch (_error) {
-      // Ignore delete failures (e.g., old message or insufficient permissions).
     }
 
     await sendPasswordBatch(ctx, selectedLength, 5);
