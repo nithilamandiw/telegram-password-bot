@@ -13,6 +13,13 @@ const bot = new Telegraf(token);
 const customSessions = new Map();
 const START_MENU_TEXT = "👋 Welcome!\n\nChoose an option below:";
 
+const CHARSETS = {
+  uppercase: "ABCDEFGHJKLMNPQRSTUVWXYZ",
+  lowercase: "abcdefghijkmnpqrstuvwxyz",
+  numbers: "123456789",
+  symbols: "!@#$%^&*_-+=?/"
+};
+
 function pickRandomChar(charset) {
   return charset[crypto.randomInt(0, charset.length)];
 }
@@ -27,11 +34,8 @@ function shuffle(chars) {
 }
 
 function generatePassword(length = 16) {
-  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lowercase = "abcdefghijkmnpqrstuvwxyz";
-  const numbers = "123456789";
-  const special = "!@#$%^&*_-+=?/";
-  const all = uppercase + lowercase + numbers + special;
+  const { uppercase, lowercase, numbers, symbols } = CHARSETS;
+  const all = uppercase + lowercase + numbers + symbols;
 
   const safeLength = Math.max(4, Number.isFinite(length) ? Math.floor(length) : 16);
 
@@ -39,7 +43,7 @@ function generatePassword(length = 16) {
     pickRandomChar(uppercase),
     pickRandomChar(lowercase),
     pickRandomChar(numbers),
-    pickRandomChar(special)
+    pickRandomChar(symbols)
   ];
 
   while (chars.length < safeLength) {
@@ -117,18 +121,12 @@ function buildCustomOptionsKeyboard(state) {
     [Markup.button.callback("Lowercase " + (state.lower ? "✅" : "❌"), "opt_lower")],
     [Markup.button.callback("Numbers " + (state.numbers ? "✅" : "❌"), "opt_numbers")],
     [Markup.button.callback("Symbols " + (state.symbols ? "✅" : "❌"), "opt_symbols")],
-    [
-      Markup.button.callback("Generate 🚀", "generate_custom"),
-      Markup.button.callback("🔄 Generate Again", "regen_custom")
-    ]
+    [Markup.button.callback("Generate 🚀", "generate_custom")]
   ]);
 }
 
 function generateCustomPassword(length, state) {
-  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lowercase = "abcdefghijkmnpqrstuvwxyz";
-  const numbers = "123456789";
-  const symbols = "!@#$%^&*_-+=?/";
+  const { uppercase, lowercase, numbers, symbols } = CHARSETS;
   const selectedSets = [];
 
   if (state.upper) {
@@ -203,8 +201,7 @@ function buildStartMenuKeyboard() {
     [Markup.button.callback("🔐 Generate Password", "menu_gen")],
     [Markup.button.callback("🔢 Generate PIN", "menu_pin")],
     [Markup.button.callback("📶 WiFi Password", "menu_wifi")],
-    [Markup.button.callback("👤 Username", "menu_username")],
-    [Markup.button.callback("⚙️ Settings", "menu_settings")]
+    [Markup.button.callback("👤 Username", "menu_username")]
   ]);
 }
 
@@ -275,12 +272,7 @@ bot.command("username", async (ctx) => {
 bot.on("callback_query", async (ctx) => {
   const data = ctx.callbackQuery?.data;
   const userId = ctx.from?.id;
-  const pinLengths = {
-    pin_4: 4,
-    pin_5: 5,
-    pin_6: 6
-  };
-  const selectedPinLength = pinLengths[data];
+
 
   if (data === "menu_gen") {
     await ctx.answerCbQuery();
@@ -306,13 +298,10 @@ bot.on("callback_query", async (ctx) => {
     return;
   }
 
-  if (data === "menu_settings") {
-    await ctx.answerCbQuery();
-    await ctx.editMessageText("⚙️ Settings coming soon");
-    return;
-  }
 
-  if (selectedPinLength) {
+  if (typeof data === "string" && ["pin_4", "pin_5", "pin_6"].includes(data)) {
+    const pinLengths = { pin_4: 4, pin_5: 5, pin_6: 6 };
+    const selectedPinLength = pinLengths[data];
     const pin = generatePin(selectedPinLength);
     await ctx.answerCbQuery();
     await sendPinWithRegen(ctx, pin, selectedPinLength);
@@ -373,7 +362,7 @@ bot.on("callback_query", async (ctx) => {
 
     const password = generatePassword(selectedLength);
     await ctx.answerCbQuery();
-    await ctx.editMessageText("<code>" + password + "</code>", {
+    await ctx.editMessageText("<code>" + escapeHtml(password) + "</code>", {
       parse_mode: "HTML",
       reply_markup: {
         inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: data }]]
@@ -427,7 +416,7 @@ bot.on("callback_query", async (ctx) => {
     return;
   }
 
-  if (data === "generate_custom" || data === "regen_custom") {
+  if (data === "generate_custom") {
     if (!userId || !customSessions.has(userId)) {
       await ctx.answerCbQuery("Use /custom first.");
       return;
@@ -436,7 +425,30 @@ bot.on("callback_query", async (ctx) => {
     const state = customSessions.get(userId);
     const password = generateCustomPassword(state.length, state);
     await ctx.answerCbQuery();
-    await ctx.reply("<code>" + escapeHtml(password) + "</code>", { parse_mode: "HTML" });
+    await ctx.reply("<code>" + escapeHtml(password) + "</code>", {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: "regen_custom" }]]
+      }
+    });
+    return;
+  }
+
+  if (data === "regen_custom") {
+    if (!userId || !customSessions.has(userId)) {
+      await ctx.answerCbQuery("Use /custom first.");
+      return;
+    }
+
+    const state = customSessions.get(userId);
+    const password = generateCustomPassword(state.length, state);
+    await ctx.answerCbQuery();
+    await ctx.editMessageText("<code>" + escapeHtml(password) + "</code>", {
+      parse_mode: "HTML",
+      reply_markup: {
+        inline_keyboard: [[{ text: "🔄 Generate Again", callback_data: "regen_custom" }]]
+      }
+    });
     return;
   }
 
