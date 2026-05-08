@@ -17,7 +17,7 @@ const CHARSETS = {
   uppercase: "ABCDEFGHJKLMNPQRSTUVWXYZ",
   lowercase: "abcdefghijkmnpqrstuvwxyz",
   numbers: "123456789",
-  symbols: "!@#$%^&*_-+=?/"
+  symbols: "!@#$%^&*_-+=?"
 };
 
 function pickRandomChar(charset) {
