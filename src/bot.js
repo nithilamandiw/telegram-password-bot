@@ -12,6 +12,12 @@ if (!token) {
 const bot = new Telegraf(token);
 const customSessions = new Map();
 const START_MENU_TEXT = "👋 Welcome!\n\nChoose an option below:";
+const START_MENU_BUTTONS = {
+  generatePassword: "🔐 Generate Password",
+  generatePin: "🔢 Generate PIN",
+  wifiPassword: "📶 WiFi Password",
+  username: "👤 Username"
+};
 
 const CHARSETS = {
   uppercase: "ABCDEFGHJKLMNPQRSTUVWXYZ",
@@ -197,12 +203,22 @@ function generateUsername() {
 }
 
 function buildStartMenuKeyboard() {
-  return Markup.inlineKeyboard([
-    [Markup.button.callback("🔐 Generate Password", "menu_gen")],
-    [Markup.button.callback("🔢 Generate PIN", "menu_pin")],
-    [Markup.button.callback("📶 WiFi Password", "menu_wifi")],
-    [Markup.button.callback("👤 Username", "menu_username")]
-  ]);
+  return {
+    reply_markup: {
+      keyboard: [
+        [
+          { text: START_MENU_BUTTONS.generatePassword },
+          { text: START_MENU_BUTTONS.generatePin }
+        ],
+        [
+          { text: START_MENU_BUTTONS.wifiPassword },
+          { text: START_MENU_BUTTONS.username }
+        ]
+      ],
+      resize_keyboard: true,
+      input_field_placeholder: "Write a message..."
+    }
+  };
 }
 
 function buildGenLengthKeyboard() {
@@ -266,6 +282,22 @@ bot.command("wifi", async (ctx) => {
 });
 
 bot.command("username", async (ctx) => {
+  await sendUsername(ctx);
+});
+
+bot.hears(START_MENU_BUTTONS.generatePassword, (ctx) => {
+  ctx.reply("🔢 Select password length:", buildGenLengthKeyboard());
+});
+
+bot.hears(START_MENU_BUTTONS.generatePin, (ctx) => {
+  ctx.reply("Select PIN length:", buildPinLengthKeyboard());
+});
+
+bot.hears(START_MENU_BUTTONS.wifiPassword, async (ctx) => {
+  await sendWifiPassword(ctx);
+});
+
+bot.hears(START_MENU_BUTTONS.username, async (ctx) => {
   await sendUsername(ctx);
 });
 
